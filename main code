@@ -210,7 +210,7 @@ float MQRead(int mq_pin) {
         rs += MQResistanceCalculation(raw_adc);
         delay(READ_SAMPLE_INTERVAL);
     }
-    return rs / READ_SAMPLE_TIMES;a
+    return rs / READ_SAMPLE_TIMES;
 }
 
 float MQGetGasPercentage(float rs_ro_ratio, float *pcurve) {
