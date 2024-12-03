@@ -1,4 +1,4 @@
-## **4. Power Efficiency**
+#### **4. Power Efficiency**
  A power supplying system is to be designed, so that the sensors can operate for 6 continuous months without battery replacement. So the following section will discuss the power consumption calculation to choose a battery with a suitable rating.
  
  First, the datasheets were referenced to obtain the maximum current consumption of each sensor, voltage and sampling rate:
@@ -13,7 +13,7 @@ Then, the active time was calculated as follows for each sensor over a day:
 
 $$
   \text{Active Time} = \text{Number of Readings} \times \text{Duration per Reading}
-  $$
+$$
   For the DHT11 humidity sensor, it takes one reading per minute with each reading lasting 100 milliseconds so the calculated active time was:
   
   $$
@@ -41,21 +41,22 @@ $$
 
 - **DHT11**:
     
-    $$
-    = \left(\frac{2.5\,\text{mA} \times 144\,\text{s}}{3600}\right) = 0.10\,\text{mAh}
-    $$
+$$
+    = \left(\frac{2.5\,\text{mA} \times 144\,\text{s}}{3600}\right) = 0.10\,\text{mAh} 
+$$
 
 - **MQ-9**:
     
-    $$
-    = \left(\frac{150\,\text{mA} \times 240\,\text{s}}{3600}\right) = 10\,\text{mAh}
-    $$
+$$
+    = \left(\frac{150\,\text{mA} \times 240\,\text{s}}{3600}\right) =
+    10\,\text{mAh}
+$$
 
 - **Accelerometer**:
 
-    $$
-    = \left(\frac{23\,\mu\text{A} \times 86400\,\text{s}}{3600}\right) = 0.46\,\text{mAh}
-    $$
+$$
+    = \left(\frac{23\,\mu\text{A} \times 86400\,\text{s}}{3600}\right) = 0.46\,\text{mAh}    
+$$
 
 So the total daily consumption is the summation of these values: 
 
@@ -86,3 +87,4 @@ $$
 $$
 
 Which proves that the system can run efficiently for at least 6 months.
+
