@@ -14,6 +14,7 @@ Then, the active time was calculated as follows for each sensor over a day:
 $$
   \text{Active Time} = \text{Number of Readings} \times \text{Duration per Reading}
 $$
+
   For the DHT11 humidity sensor, it takes one reading per minute with each reading lasting 100 milliseconds so the calculated active time was:
   
   $$
