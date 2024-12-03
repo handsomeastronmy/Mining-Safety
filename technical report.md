@@ -21,11 +21,11 @@ $$
   $$
 
  For the MQ-9 sensor, given it has a heating mode that repeats itself and lasts about 10 seconds each hour and consumes the most current in this phase:
- 
-    $$
-    \text{Active Time} = 24 \text{ readings} \times 10 \text{ seconds} = 240 \text{ seconds/day}
-    $$
 
+ $$
+    \text{Active Time} = 24 \text{ readings} \times 10 \text{ seconds} = 240 \text{ seconds/day}
+ $$
+   
 For the Accelerometer that takes a reading every second with 1 second per reading
     $$
     \text{Active Time} = 86400 \text{ seconds/day}
