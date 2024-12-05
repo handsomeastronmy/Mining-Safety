@@ -1,27 +1,22 @@
-#define BLYNK_TEMPLATE_ID "TMPL2eiVZOmcs"
-#define BLYNK_TEMPLATE_NAME "ESPData"
-#define BLYNK_AUTH_TOKEN "MupeH3xOrfox_UeyqfiBs9mFYLuHlMkC"
-
 #include <BlynkSimpleEsp32.h>
 #include <WiFi.h>
+#include <Wire.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include <Wire.h>
 #include <Adafruit_ADXL345_U.h>
-#include "HX711.h"
-#include "soc/rtc.h"
 #include <math.h>
+#include <DHT.h>
+#include <DHT_U.h>
 
 // Red LED Pin
 #define RED_PIN 12
 
 // Blynk Virtual Pins
 #define CO V4
-#define X V1
-#define Y V2
-#define Z V3
 #define Vibration V0
-#define Pressure V5
+#define Humidity V6
+#define Rollangle V2
+#define Pitchangle V1
 
 // MQ Sensor Configuration
 #define MQ_PIN 34
@@ -32,12 +27,11 @@
 #define READ_SAMPLE_INTERVAL 50
 #define READ_SAMPLE_TIMES 5
 float Ro = 10; // Initial resistance in clean air
-
-// Gas Curve for CO
-float COCurve[3] = {2.3, 0.72, -0.34};
+float COCurve[3] = {2.3, 0.72, -0.34}; // Gas Curve for CO
 
 // ADXL345 Accelerometer Object
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
+float initialX = 0.0, initialY = 0.0, initialZ = 0.0;
 
 // WiFi Credentials
 char auth[] = BLYNK_AUTH_TOKEN;
@@ -45,178 +39,171 @@ char ssid[] = "مباشر من روسيا";
 char pass[] = "12312335";
 
 // Google Sheets Script Web App URL
-const char* serverName = "https://script.google.com/macros/s/AKfycby_BVlFqT40emTKd0EoX72s44FhXkoaXBRwBD7f93b4Hvb3haPNenVa4jcQqc2rRW4v/exec";
+const char* serverName = "https://script.google.com/macros/s/AKfycbyC-zPugUDDZ6IXr4ksjSmPfnG0W5TQwRgA96j1wkbcNqALbI9nod79PoRlQpK_6-1hGA/exec"; // Replace with your Apps Script Web App URL
 
-// Load Cell Configuration (Pins and Object)
-const int LOADCELL_DOUT_PIN = 18;
-const int LOADCELL_SCK_PIN = 5;
-HX711 scale;
+DHT dht1(4, DHT11);
 
 // Thresholds
-const float VIBRATION_THRESHOLD = 5.0; // m/sec
+const float VIBRATION_THRESHOLD = 10; // m/sec'2
 const float CO_THRESHOLD = 25.0; // ppm (estimated value for CO)
+const float Humidity_THRESHOLD = 84;
+const float Roll_THRESHOLD = 35;
+const float Pitch_THRESHOLD = 35;
 
 void setup() {
-    // Initialize Serial Monitor
-    Serial.begin(115200);
-    delay(1000);
-    Blynk.begin(auth, ssid, pass);
+  // Initialize Serial Monitor
+  Serial.begin(115200);
+  delay(100);
 
-    // Initialize MQ Sensor
-    Serial.println("Calibrating MQ sensor...");
-    Ro = MQCalibration(MQ_PIN);
-    if (Ro <= 0) {
-        Ro = 10; // Fallback value
-        Serial.println("Calibration failed. Using default Ro value.");
-    }
-    Serial.print("MQ Sensor Calibrated. Ro = ");
-    Serial.println(Ro);
+  Blynk.begin(auth, ssid, pass);
 
-    // Initialize ADXL345 Accelerometer
-    if (!accel.begin()) {
-        Serial.println("Failed to find ADXL345 chip");
-        while (1); // Stop if accelerometer is not found
-    }
-    accel.setRange(ADXL345_RANGE_16_G); // Set accelerometer range to ±16g
-    Serial.println("ADXL345 connection successful");
+  if (!accel.begin()) {
+    Serial.println("Failed to find ADXL345 chip");
+    while (1); // Stop if accelerometer is not found
+  }
+  accel.setRange(ADXL345_RANGE_2_G); // Set accelerometer range to ±16g
 
-    // Initialize Load Cell
-    Serial.println("Initializing the scale");
-    scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-    scale.set_scale(17 / 2000); // Set calibration factor
-    scale.tare(); // Reset scale to zero
+  // Capture initial (baseline) accelerometer values
+  sensors_event_t event;
+  accel.getEvent(&event);
+  initialX = event.acceleration.x;
+  initialY = event.acceleration.y;
+  initialZ = event.acceleration.z;
+  Serial.println("Initial accelerometer readings captured");
 
-    // Initialize Red LED pin
-    pinMode(RED_PIN, OUTPUT);
-    digitalWrite(RED_PIN, LOW); // Turn off the Red LED initially
+  pinMode(RED_PIN, OUTPUT);
+
+  // Initialize MQ Sensor
+  Serial.println("Calibrating MQ sensor...");
+  Ro = MQCalibration(MQ_PIN);
+  if (Ro <= 0) {
+    Ro = 10; // Fallback value
+    Serial.println("Calibration failed. Using default Ro value.");
+  }
+  Serial.print("MQ Sensor Calibrated. Ro = ");
+  Serial.println(Ro);
 }
 
 void loop() {
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient http;
-        http.begin(serverName);
+  if (WiFi.status() == WL_CONNECTED) {
+    float rs_ro_ratio = MQRead(MQ_PIN) / Ro;
+    float coValue = MQGetGasPercentage(rs_ro_ratio, COCurve);
+    if (coValue < 0) coValue = 0; // Fallback value
 
-        // Get CO value from MQ sensor
-        float rs_ro_ratio = MQRead(MQ_PIN) / Ro;
-        float coValue = MQGetGasPercentage(rs_ro_ratio, COCurve);
+    float humidity = dht1.readHumidity();
+    sensors_event_t event;
+    accel.getEvent(&event);
 
-        if (coValue < 0) {
-            Serial.println("Invalid CO value. Skipping.");
-            coValue = 0; // Fallback value
-        }
+    // Adjusted accelerometer values
+    float adjustedX = event.acceleration.x - initialX;
+    float adjustedY = event.acceleration.y - initialY;
+    float adjustedZ = event.acceleration.z - initialZ;
 
-        Serial.print("CO: ");
-        Serial.print(coValue);
-        Serial.println(" ppm");
-        Blynk.virtualWrite(CO, coValue);
+    // Calculate vibration intensity (RMS)
+    float vibrationIntensity = sqrt((adjustedX * adjustedX + adjustedY * adjustedY + adjustedZ * adjustedZ - 1) / 3);
 
-        // Get accelerometer data
-        sensors_event_t event;
-        accel.getEvent(&event);
+    // Calculate tilt angles
+    float roll = atan2(event.acceleration.y, event.acceleration.z) * 180.0 / PI;
+    float pitch = atan2(-event.acceleration.x, sqrt(event.acceleration.y * event.acceleration.y + event.acceleration.z * event.acceleration.z)) * 180.0 / PI;
 
-        // Send accelerometer data to Blynk
-        Blynk.virtualWrite(X, event.acceleration.x);
-        Blynk.virtualWrite(Y, event.acceleration.y);
-        Blynk.virtualWrite(Z, event.acceleration.z);
+    // Write to Blynk
+    Blynk.virtualWrite(CO, coValue);
+    Blynk.virtualWrite(Vibration, vibrationIntensity);
+    Blynk.virtualWrite(Humidity, humidity);
+    Blynk.virtualWrite(Rollangle, roll);
+    Blynk.virtualWrite(Pitchangle, pitch);
 
-        // Calculate vibration intensity (RMS)
-        float vibrationIntensity = sqrt((event.acceleration.x * event.acceleration.x +
-                                         event.acceleration.y * event.acceleration.y +
-                                         event.acceleration.z * event.acceleration.z) / 3);
-        Serial.print("Vibration Intensity: ");
-        Serial.println(vibrationIntensity);
-        Blynk.virtualWrite(Vibration, vibrationIntensity);
-
-        // Turn on Red LED if vibration exceeds threshold
-        digitalWrite(RED_PIN, vibrationIntensity > VIBRATION_THRESHOLD);
-
-        // Get weight from load cell
-        float weight = scale.get_units(10); // Average of 10 readings
-        Serial.print("Weight: ");
-        Serial.println(weight, 1);
-        Blynk.virtualWrite(Pressure, weight);
-
-        // Prepare JSON payload for server transmission
-        StaticJsonDocument<200> jsonDoc;
-        jsonDoc["co"] = coValue;
-        jsonDoc["x"] = event.acceleration.x;
-        jsonDoc["y"] = event.acceleration.y;
-        jsonDoc["z"] = event.acceleration.z;
-        jsonDoc["vibration"] = vibrationIntensity;
-        jsonDoc["weight"] = weight;
-
-        String jsonString;
-        serializeJson(jsonDoc, jsonString);
-
-        // Send JSON payload to Google Sheets
-        http.addHeader("Content-Type", "application/json");
-        int httpResponseCode = http.POST(jsonString);
-
-        // Handle response
-        if (httpResponseCode > 0) {
-            String response = http.getString();
-            Serial.println("Server Response:");
-            Serial.println(response);
-        } else {
-            Serial.print("Error on sending POST: ");
-            Serial.println(httpResponseCode);
-        }
-
-        http.end();
-    } else {
-        Serial.println("WiFi not connected.");
+    // LED Alert and Serial Alert
+    if (vibrationIntensity > VIBRATION_THRESHOLD) {
+      Serial.println("Alert: Vibration Intensity exceeded threshold");
     }
 
-    // Delay to prevent rapid loop execution
-    delay(1000);
+    if (coValue > CO_THRESHOLD) {
+      Serial.println("Alert: CO Level exceeded threshold");
+    }
+
+    if (humidity > Humidity_THRESHOLD) {
+      Serial.println("Alert: Humidity exceeded threshold");
+    }
+
+    if (roll > Roll_THRESHOLD) {
+      Serial.println("Alert: Roll Angle exceeded threshold");
+    }
+
+    if (pitch > Pitch_THRESHOLD) {
+      Serial.println("Alert: Pitch Angle exceeded threshold");
+    }
+
+    if (vibrationIntensity > VIBRATION_THRESHOLD || coValue > CO_THRESHOLD || humidity > Humidity_THRESHOLD || roll > Roll_THRESHOLD || pitch > Pitch_THRESHOLD) {
+      digitalWrite(RED_PIN, HIGH);
+    } else {
+      digitalWrite(RED_PIN, LOW);
+    }
+
+    // Send Data to Google Sheets
+    sendDataToGoogleSheets(coValue, vibrationIntensity, humidity, roll, pitch);
+  } else {
+    Serial.println("WiFi not connected.");
+  }
+
+  delay(1000); // Delay to prevent rapid loop execution
+}
+
+// Function to send data to Google Sheets
+void sendDataToGoogleSheets(float coValue, float vibrationIntensity, float humidity, float roll, float pitch) {
+  HTTPClient http;
+  http.begin(serverName);
+
+  // Prepare JSON payload
+  StaticJsonDocument<200> jsonDoc;
+  jsonDoc["co"] = coValue;
+  jsonDoc["vibration Intensity"] = vibrationIntensity;
+  jsonDoc["Humidity"] = humidity;
+  jsonDoc["Roll"] = roll;
+  jsonDoc["Pitch"] = pitch;
+
+  String jsonString;
+  serializeJson(jsonDoc, jsonString);
+
+  // Send HTTP POST request
+  http.addHeader("Content-Type", "application/json");
+  int httpResponseCode = http.POST(jsonString);
+
+  if (httpResponseCode > 0) {
+    Serial.println("Google Sheets Response: " + http.getString());
+  } else {
+    Serial.print("Error sending data: ");
+    Serial.println(httpResponseCode);
+  }
+
+  http.end();
 }
 
 // MQ Sensor Functions
 float MQResistanceCalculation(int raw_adc) {
-    if (raw_adc == 0) {
-        Serial.println("Error: raw_adc is 0.");
-        return -1; // Error-indicating value
-    }
-    return ((float)RL_VALUE * (1023 - raw_adc) / raw_adc);
+  if (raw_adc == 0) return -1; // Error-indicating value
+  return ((float)RL_VALUE * (1023 - raw_adc) / raw_adc);
 }
 
 float MQCalibration(int mq_pin) {
-    float val = 0;
-    for (int i = 0; i < CALIBRATION_SAMPLE_TIMES; i++) {
-        float resistance = MQResistanceCalculation(analogRead(mq_pin));
-        if (resistance < 0) {
-            Serial.println("Invalid resistance during calibration.");
-            continue;
-        }
-        val += resistance;
-        delay(CALIBRATION_SAMPLE_INTERVAL);
-    }
-    val = val / CALIBRATION_SAMPLE_TIMES;
-    if (val <= 0) {
-        Serial.println("Calibration failed. Resistance is invalid.");
-        return -1; // Error-indicating value
-    }
-    return val / RO_CLEAN_AIR_FACTOR;
+  float val = 0;
+  for (int i = 0; i < CALIBRATION_SAMPLE_TIMES; i++) {
+    float resistance = MQResistanceCalculation(analogRead(mq_pin));
+    if (resistance > 0) val += resistance;
+    delay(CALIBRATION_SAMPLE_INTERVAL);
+  }
+  return val / CALIBRATION_SAMPLE_TIMES / RO_CLEAN_AIR_FACTOR;
 }
 
 float MQRead(int mq_pin) {
-    float rs = 0;
-    for (int i = 0; i < READ_SAMPLE_TIMES; i++) {
-        int raw_adc = analogRead(mq_pin);
-        if (raw_adc <= 0 || raw_adc >= 1023) {
-            Serial.println("Invalid analogRead value: " + String(raw_adc));
-            continue;
-        }
-        rs += MQResistanceCalculation(raw_adc);
-        delay(READ_SAMPLE_INTERVAL);
-    }
-    return rs / READ_SAMPLE_TIMES;
+  float rs = 0;
+  for (int i = 0; i < READ_SAMPLE_TIMES; i++) {
+    rs += MQResistanceCalculation(analogRead(mq_pin));
+    delay(READ_SAMPLE_INTERVAL);
+  }
+  return rs / READ_SAMPLE_TIMES;
 }
 
 float MQGetGasPercentage(float rs_ro_ratio, float *pcurve) {
-    if (rs_ro_ratio <= 0) {
-        Serial.println("Invalid rs/ro ratio.");
-        return -1; // Error-indicating value
-    }
-    return pow(10, ((log(rs_ro_ratio) - pcurve[1]) / pcurve[2]) + pcurve[0]);
+  return pow(10, ((log(rs_ro_ratio) - pcurve[1]) / pcurve[2]) + pcurve[0]);
 }
