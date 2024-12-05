@@ -1,3 +1,7 @@
+#define BLYNK_TEMPLATE_ID "TMPL2eiVZOmcs"
+#define BLYNK_TEMPLATE_NAME "ESPData"
+#define BLYNK_AUTH_TOKEN "MupeH3xOrfox_UeyqfiBs9mFYLuHlMkC"
+
 #include <BlynkSimpleEsp32.h>
 #include <WiFi.h>
 #include <Wire.h>
@@ -13,10 +17,13 @@
 
 // Blynk Virtual Pins
 #define CO V4
+#define X V1
+#define Y V2
+#define Z V3
 #define Vibration V0
 #define Humidity V6
-#define Rollangle V2
-#define Pitchangle V1
+#define Tiltrollangle V7
+#define Tiltpitchangle V8
 
 // MQ Sensor Configuration
 #define MQ_PIN 34
@@ -44,7 +51,7 @@ const char* serverName = "https://script.google.com/macros/s/AKfycbyC-zPugUDDZ6I
 DHT dht1(4, DHT11);
 
 // Thresholds
-const float VIBRATION_THRESHOLD = 10; // m/sec'2
+const float VIBRATION_THRESHOLD = 6; // m/sec'2
 const float CO_THRESHOLD = 25.0; // ppm (estimated value for CO)
 const float Humidity_THRESHOLD = 84;
 const float Roll_THRESHOLD = 35;
@@ -100,7 +107,7 @@ void loop() {
     float adjustedZ = event.acceleration.z - initialZ;
 
     // Calculate vibration intensity (RMS)
-    float vibrationIntensity = sqrt((adjustedX * adjustedX + adjustedY * adjustedY + adjustedZ * adjustedZ - 1) / 3);
+    float vibrationIntensity = sqrt((adjustedX * adjustedX + adjustedY * adjustedY + adjustedZ * adjustedZ-1) / 3);
 
     // Calculate tilt angles
     float roll = atan2(event.acceleration.y, event.acceleration.z) * 180.0 / PI;
@@ -110,35 +117,12 @@ void loop() {
     Blynk.virtualWrite(CO, coValue);
     Blynk.virtualWrite(Vibration, vibrationIntensity);
     Blynk.virtualWrite(Humidity, humidity);
-    Blynk.virtualWrite(Rollangle, roll);
-    Blynk.virtualWrite(Pitchangle, pitch);
+    Blynk.virtualWrite(Tiltrollangle, roll);
+    Blynk.virtualWrite(Tiltpitchangle, pitch);
 
-    // LED Alert and Serial Alert
-    if (vibrationIntensity > VIBRATION_THRESHOLD) {
-      Serial.println("Alert: Vibration Intensity exceeded threshold");
-    }
-
-    if (coValue > CO_THRESHOLD) {
-      Serial.println("Alert: CO Level exceeded threshold");
-    }
-
-    if (humidity > Humidity_THRESHOLD) {
-      Serial.println("Alert: Humidity exceeded threshold");
-    }
-
-    if (roll > Roll_THRESHOLD) {
-      Serial.println("Alert: Roll Angle exceeded threshold");
-    }
-
-    if (pitch > Pitch_THRESHOLD) {
-      Serial.println("Alert: Pitch Angle exceeded threshold");
-    }
-
-    if (vibrationIntensity > VIBRATION_THRESHOLD || coValue > CO_THRESHOLD || humidity > Humidity_THRESHOLD || roll > Roll_THRESHOLD || pitch > Pitch_THRESHOLD) {
-      digitalWrite(RED_PIN, HIGH);
-    } else {
-      digitalWrite(RED_PIN, LOW);
-    }
+    // LED Alert
+    if (vibrationIntensity > VIBRATION_THRESHOLD) digitalWrite(RED_PIN, HIGH);
+    else digitalWrite(RED_PIN, LOW);
 
     // Send Data to Google Sheets
     sendDataToGoogleSheets(coValue, vibrationIntensity, humidity, roll, pitch);
@@ -161,6 +145,11 @@ void sendDataToGoogleSheets(float coValue, float vibrationIntensity, float humid
   jsonDoc["Humidity"] = humidity;
   jsonDoc["Roll"] = roll;
   jsonDoc["Pitch"] = pitch;
+  Serial.print(humidity);
+  Serial.print(pitch);
+  Serial.print(roll);
+  Serial.print(coValue);
+  Serial.print(vibrationIntensity);
 
   String jsonString;
   serializeJson(jsonDoc, jsonString);
