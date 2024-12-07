@@ -1,64 +1,9 @@
 
-#### **1. Introduction**
-- Background of the project
-- Purpose and scope
-- Overview of mine safety challenges being addressed
+## 1. Introduction
 
 ## 2. Sensor integration
-
-##### **Sensor Selection and Integration**
-- **Sensors Used:**
-  - **Accelerometer:** Measures vibration and motion.
-  - **MQ-9 Gas Sensor:** Monitors gas levels (e.g., CO).
-  - **Load Cell/Temperature Sensor Placeholder:** Monitors weight/temperature.
-- **Calibration Data:**
-  - Accelerometer:
-    ```markdown
-    | Vibration Intensity (m/s²) | Raw Data (mV) |
-    |----------------------------|---------------|
-    | 0                          | 500           |
-    | 5                          | 1500          |
-    | 10                         | 2500          |
-    ```
-  - MQ-9 Gas Sensor:
-    ```markdown
-    | Gas Concentration (ppm) | Raw Data (mV) |
-    |-------------------------|---------------|
-    | 0                       | 400           |
-    | 25                      | 1200          |
-    | 50                      | 2000          |
-    ```
-  - Load Cell (Placeholder):
-    ```markdown
-    | Load (kg) | Raw Data (mV) |
-    |-----------|---------------|
-    | 0         | 1000          |
-    | 50        | 2000          |
-    | 100       | 3000          |
-    ```
-  - Temperature Sensor (Placeholder):
-    ```markdown
-    | Temperature (°C) | Raw Data (mV) |
-    |------------------|---------------|
-    | 0                | 100           |
-    | 25               | 500           |
-    | 50               | 900           |
-    ```
-- **Integration Process:**
-  - Detailed description of how sensors were integrated into the system.
-
-##### **Signal Processing**
-- **Algorithms Used:**
-  - Description of algorithms to convert raw data into meaningful metrics (e.g., calculating vibration intensity, gas concentration).
-- **Calibration Techniques:**
-  - Example: Using linear regression to map sensor data to physical quantities.
-
-##### **Real-Time Monitoring and Alerts**
-- **Alert System:**
-  - Red LED for vibration > 5 m/s².
-  - Warning message for gas concentration > 25 ppm.
-- **Monitoring:**
-  - System provides updates every 30 seconds.
+The sensors connections were planned in the Cirkit Designer Software and can be seen in the following figure:
+**![](https://lh7-rt.googleusercontent.com/slidesz/AGV_vUfpIIhmLG60DCN_r03ort3DBUqlsi1_eMqJrW-7dWEWY1xa75wYNkm4i9utNh_CxpffEariiI11QVOV7fsfx2c2GiPXY2wcjF_oi_b1JPsGrKyqwjHZiDq-nO8ffOKdcDKABTC2N8qfCDD-LCQV4CE=s2048?key=XSWHYWdthl-CbACJd_wcfhjO)**
 
 ## 3. Signal interpretation techniques:
 The following section will detail the methodology of converting raw sensor data to readings accurately expressing the environmental conditions sent.
@@ -281,6 +226,7 @@ To convert hours into days divide by 24:
 $$
 \text{Battery Lifetime (days)} = \frac{4880}{24} \approx 203.33 \text{ days} 
 $$
+
 Then it can be deduced that the power supply will last approximately **203 days**, about 6.7 months, which proves the system achieved the requirement of being able to run at least **6 months**.
  
 
@@ -290,6 +236,7 @@ Then it can be deduced that the power supply will last approximately **203 days*
 ### Required storage for one year
 
 Since the data storage frequency is 5 seconds, the total data points or data entries will be calculated by dividing the number of seconds per day over the collection frequency 
+  
   $$
   \frac{86400 \text{ seconds/day}}{5 \text{ seconds/entry}} = 17,280 \text{ entries/day}
   $$
@@ -305,6 +252,7 @@ Then the needed storage for one year is:
 $$
 1.15 \text{ MB/day} \times 365 \text{ days} = 419.75 \text{ MB/year}
 $$
+
 which is provided by the large storage capacity in the cloud-based Google sheet.
 
 ### Data storage mechanism
@@ -437,3 +385,212 @@ The dashboard can be seen in the figure:
 
 Each chart was assigned a datastream from the virtual pin that is connected to each value of the sensor readings.
 This solution made the data be updated real-time visually for decision making.
+
+## 7. System performance in the test environment 
+
+Here's the continuation of the data structured into a compressed table in Markdown, focusing only on the timestamp, reading time, and humidity:
+
+| **Timestamp**      | **Reading Time** | **Humidity** |
+| ------------------ | ---------------- | ------------ |
+| 12/2/2024 16:23:55 | 23:55            | 57           |
+| 12/2/2024 16:23:56 | 23:55            | 57           |
+| 12/2/2024 16:24:52 | 24:51:00         | 57           |
+| 12/2/2024 16:25:02 | 25:1             | 58           |
+| 12/2/2024 16:51:44 | 51:43:00         | 52           |
+| 12/2/2024 16:51:49 | 51:49:00         | 61           |
+| 12/2/2024 16:51:55 | 51:54:00         | 63           |
+| 12/2/2024 16:52:00 | 51:59:00         | 64           |
+| 12/2/2024 16:52:05 | 52:5             | 65           |
+| 12/2/2024 16:52:11 | 52:11:00         | 66           |
+| 12/2/2024 16:52:17 | 52:16:00         | 66           |
+| 12/2/2024 16:52:22 | 52:21:00         | 67           |
+| 12/2/2024 16:52:29 | 52:29:00         | 68           |
+| 12/2/2024 16:52:34 | 52:34:00         | 69           |
+| 12/2/2024 16:52:40 | 52:39:00         | 71           |
+| 12/2/2024 16:52:45 | 52:45:00         | 72           |
+| 12/2/2024 16:52:51 | 52:50:00         | 73           |
+| 12/2/2024 16:52:57 | 52:56:00         | 74           |
+| 12/2/2024 16:53:14 | 53:14:00         | 77           |
+| 12/2/2024 16:53:23 | 53:23:00         | 77           |
+| 12/2/2024 16:53:28 | 53:28:00         | 77           |
+| 12/2/2024 16:53:33 | 53:33:00         | 77           |
+| 12/2/2024 16:53:40 | 53:39:00         | 78           |
+| 12/2/2024 16:53:45 | 53:45:00         | 79           |
+| 12/2/2024 16:53:50 | 53:50:00         | 79           |
+| 12/2/2024 16:53:56 | 53:56:00         | 80           |
+| 12/2/2024 16:54:02 | 54:1             | 80           |
+| 12/2/2024 16:54:07 | 54:6             | 80           |
+| 12/2/2024 16:54:14 | 54:13:00         | 80           |
+| 12/2/2024 16:54:19 | 54:19:00         | 80           |
+| 12/2/2024 16:54:26 | 54:26:00         | 80           |
+| 12/2/2024 16:54:33 | 54:32:00         | 80           |
+| 12/2/2024 16:54:38 | 54:38:00         | 80           |
+| 12/2/2024 16:54:44 | 54:43:00         | 81           |
+| 12/2/2024 16:54:49 | 54:48:00         | 81           |
+| 12/2/2024 16:54:54 | 54:53:00         | 81           |
+| 12/2/2024 16:54:59 | 54:58:00         | 81           |
+| 12/2/2024 16:55:04 | 55:4             | 81           |
+| 12/2/2024 16:55:10 | 55:9             | 81           |
+| 12/2/2024 16:55:17 | 55:16:00         | 81           |
+| 12/2/2024 16:55:22 | 55:21:00         | 80           |
+| 12/2/2024 16:55:29 | 55:28:00         | 80           |
+| 12/2/2024 16:55:34 | 55:34:00         | 80           |
+| 12/2/2024 16:55:43 | 55:42:00         | 80           |
+| 12/2/2024 16:55:49 | 55:48:00         | 81           |
+| 12/2/2024 16:55:54 | 55:54:00         | 81           |
+| 12/2/2024 16:56:00 | 56:0             | 81           |
+| 12/2/2024 16:56:06 | 56:6             | 80           |
+| 12/2/2024 16:56:12 | 56:12:00         | 80           |
+| 12/2/2024 16:56:22 | 56:21:00         | 80           |
+| 12/2/2024 16:56:29 | 56:29:00         | 81           |
+| 12/2/2024 16:56:36 | 56:35:00         | 82           |
+| 12/2/2024 16:56:42 | 56:42:00         | 84           |
+| 12/2/2024 16:56:48 | 56:48:00         | 86           |
+| 12/2/2024 16:57:04 | 57:4             | 88           |
+| 12/2/2024 16:57:06 | 57:5             | 89           |
+| 12/2/2024 16:57:18 | 57:17:00         | 90           |
+| 12/2/2024 16:57:24 | 57:23:00         | 91           |
+| 12/2/2024 16:57:30 | 57:29:00         | 93           |
+| 12/2/2024 16:57:35 | 57:34:00         | 94           |
+| 12/2/2024 16:57:40 | 57:39:00         | 94           |
+| 12/2/2024 16:57:45 | 57:45:00         | 94           |
+| 12/2/2024 16:57:51 | 57:50:00         | 94           |
+| 12/2/2024 16:57:56 | 57:56:00         | 94           |
+| 12/2/2024 16:58:05 | 58:4             | 95           |
+| 12/2/2024 16:58:10 | 58:9             | 95           |
+| 12/2/2024 16:58:15 | 58:15:00         | 96           |
+| 12/2/2024 16:58:21 | 58:20:00         | 96           |
+| 12/2/2024 16:58:32 | 58:32:00         | 96           |
+| 12/2/2024 16:58:45 | 58:44:00         | 97           |
+| 12/2/2024 16:58:51 | 58:50:00         | 97           |
+| 12/2/2024 16:59:00 | 59:0             | 97           |
+|                    |                  |              |
+
+## 6. Data visualization 
+
+The sensor data was visualized using the Blynk platform. The Blynk library was installed in the Arduino IDE and the WiFi credentials were included. A new template was created in blynk and the template ID, device name, and authentication token were copied and defined in the program. The `loop()` function was used to send sensor data to Blynk using virtual pins.
+This codeblock is an example code demonstrating setting the virtual pins and connecting with Blynk:
+
+```cpp
+#define BLYNK_TEMPLATE_ID "YOUR_TEMPLATE_ID"
+#define BLYNK_DEVICE_NAME "YOUR_DEVICE_NAME"
+#define BLYNK_AUTH_TOKEN "YOUR_AUTH_TOKEN"
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "YOUR_SSID";
+char pass[] = "YOUR_PASSWORD";
+
+void setup() {
+  Serial.begin(115200);
+  Blynk.begin(auth, ssid, pass);
+}
+
+void loop() {
+  Blynk.run();
+  float co = 0.004135; // Example CO value
+  float vibration = 0.081657; // Example vibration value
+  float humidity = 48; // Example humidity value
+  float roll = 50.34708; // Example roll angle
+  float pitch = 11.94512; // Example pitch angle
+
+  Blynk.virtualWrite(V1, co);
+  Blynk.virtualWrite(V2, vibration);
+  Blynk.virtualWrite(V3, humidity);
+  Blynk.virtualWrite(V4, roll);
+  Blynk.virtualWrite(V5, pitch);
+
+  delay(5000); // Send data every 5 seconds
+}
+```
+
+In the Blynk website multiple widget charts and labels were added to display the sensor data. 
+The dashboard can be seen in the figure:
+
+![](https://i.imgur.com/XKSu2A9.png)
+
+Each chart was assigned a datastream from the virtual pin that is connected to each value of the sensor readings.
+This solution made the data be updated real-time visually for decision making.
+
+## 7. System performance in the test environment 
+
+Here's the continuation of the data structured into a compressed table in Markdown, focusing only on the timestamp, reading time, and humidity:
+
+| **Timestamp**      | **Reading Time** | **Humidity** |
+| ------------------ | ---------------- | ------------ |
+| 12/2/2024 16:23:55 | 23:55            | 57           |
+| 12/2/2024 16:23:56 | 23:55            | 57           |
+| 12/2/2024 16:24:52 | 24:51:00         | 57           |
+| 12/2/2024 16:25:02 | 25:1             | 58           |
+| 12/2/2024 16:51:44 | 51:43:00         | 52           |
+| 12/2/2024 16:51:49 | 51:49:00         | 61           |
+| 12/2/2024 16:51:55 | 51:54:00         | 63           |
+| 12/2/2024 16:52:00 | 51:59:00         | 64           |
+| 12/2/2024 16:52:05 | 52:5             | 65           |
+| 12/2/2024 16:52:11 | 52:11:00         | 66           |
+| 12/2/2024 16:52:17 | 52:16:00         | 66           |
+| 12/2/2024 16:52:22 | 52:21:00         | 67           |
+| 12/2/2024 16:52:29 | 52:29:00         | 68           |
+| 12/2/2024 16:52:34 | 52:34:00         | 69           |
+| 12/2/2024 16:52:40 | 52:39:00         | 71           |
+| 12/2/2024 16:52:45 | 52:45:00         | 72           |
+| 12/2/2024 16:52:51 | 52:50:00         | 73           |
+| 12/2/2024 16:52:57 | 52:56:00         | 74           |
+| 12/2/2024 16:53:14 | 53:14:00         | 77           |
+| 12/2/2024 16:53:23 | 53:23:00         | 77           |
+| 12/2/2024 16:53:28 | 53:28:00         | 77           |
+| 12/2/2024 16:53:33 | 53:33:00         | 77           |
+| 12/2/2024 16:53:40 | 53:39:00         | 78           |
+| 12/2/2024 16:53:45 | 53:45:00         | 79           |
+| 12/2/2024 16:53:50 | 53:50:00         | 79           |
+| 12/2/2024 16:53:56 | 53:56:00         | 80           |
+| 12/2/2024 16:54:02 | 54:1             | 80           |
+| 12/2/2024 16:54:07 | 54:6             | 80           |
+| 12/2/2024 16:54:14 | 54:13:00         | 80           |
+| 12/2/2024 16:54:19 | 54:19:00         | 80           |
+| 12/2/2024 16:54:26 | 54:26:00         | 80           |
+| 12/2/2024 16:54:33 | 54:32:00         | 80           |
+| 12/2/2024 16:54:38 | 54:38:00         | 80           |
+| 12/2/2024 16:54:44 | 54:43:00         | 81           |
+| 12/2/2024 16:54:49 | 54:48:00         | 81           |
+| 12/2/2024 16:54:54 | 54:53:00         | 81           |
+| 12/2/2024 16:54:59 | 54:58:00         | 81           |
+| 12/2/2024 16:55:04 | 55:4             | 81           |
+| 12/2/2024 16:55:10 | 55:9             | 81           |
+| 12/2/2024 16:55:17 | 55:16:00         | 81           |
+| 12/2/2024 16:55:22 | 55:21:00         | 80           |
+| 12/2/2024 16:55:29 | 55:28:00         | 80           |
+| 12/2/2024 16:55:34 | 55:34:00         | 80           |
+| 12/2/2024 16:55:43 | 55:42:00         | 80           |
+| 12/2/2024 16:55:49 | 55:48:00         | 81           |
+| 12/2/2024 16:55:54 | 55:54:00         | 81           |
+| 12/2/2024 16:56:00 | 56:0             | 81           |
+| 12/2/2024 16:56:06 | 56:6             | 80           |
+| 12/2/2024 16:56:12 | 56:12:00         | 80           |
+| 12/2/2024 16:56:22 | 56:21:00         | 80           |
+| 12/2/2024 16:56:29 | 56:29:00         | 81           |
+| 12/2/2024 16:56:36 | 56:35:00         | 82           |
+| 12/2/2024 16:56:42 | 56:42:00         | 84           |
+| 12/2/2024 16:56:48 | 56:48:00         | 86           |
+| 12/2/2024 16:57:04 | 57:4             | 88           |
+| 12/2/2024 16:57:06 | 57:5             | 89           |
+| 12/2/2024 16:57:18 | 57:17:00         | 90           |
+| 12/2/2024 16:57:24 | 57:23:00         | 91           |
+| 12/2/2024 16:57:30 | 57:29:00         | 93           |
+| 12/2/2024 16:57:35 | 57:34:00         | 94           |
+| 12/2/2024 16:57:40 | 57:39:00         | 94           |
+| 12/2/2024 16:57:45 | 57:45:00         | 94           |
+| 12/2/2024 16:57:51 | 57:50:00         | 94           |
+| 12/2/2024 16:57:56 | 57:56:00         | 94           |
+| 12/2/2024 16:58:05 | 58:4             | 95           |
+| 12/2/2024 16:58:10 | 58:9             | 95           |
+| 12/2/2024 16:58:15 | 58:15:00         | 96           |
+| 12/2/2024 16:58:21 | 58:20:00         | 96           |
+| 12/2/2024 16:58:32 | 58:32:00         | 96           |
+| 12/2/2024 16:58:45 | 58:44:00         | 97           |
+| 12/2/2024 16:58:51 | 58:50:00         | 97           |
+| 12/2/2024 16:59:00 | 59:0             | 97           |
+|                    |                  |              |
