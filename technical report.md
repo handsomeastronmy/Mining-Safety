@@ -1,32 +1,3 @@
-Alright, let's create a customized structure for your mine safety technical report and include sample data, graphs, and tables. Here's a detailed example:
-
----
-
-### **Smart Mine Safety System: Technical Report**
-
-#### **Title Page**
-- **Project Title:** Smart Mine Safety System
-- **Team Members:** [Names of the three students]
-- **Date of Submission:** [Date]
-
-#### **Executive Summary**
-- A brief summary of the project, its objectives, key findings, and outcomes.
-  - The Smart Mine Safety System integrates accelerometer, MQ-9 gas sensor, and (load cell/temperature sensor) to monitor mine conditions.
-  - The system provides real-time data, alerts, and visualizations to enhance mine safety.
-
-#### **Table of Contents**
-1. Introduction
-2. System Design
-   - Sensor Selection and Integration
-   - Signal Processing
-   - Real-Time Monitoring and Alerts
-3. Data Visualization
-4. Power Efficiency
-5. Data Storage
-6. Testing and Results
-7. Conclusion
-8. References
-9. Appendices
 
 #### **1. Introduction**
 - Background of the project
@@ -242,103 +213,75 @@ The vibration intensity was calculated by obtaining the root mean square of the 
   - Indications of measurement error for each data point.
 
 ## 4. Power Efficiency
- #### **4. Power Efficiency**
 
 A power supplying system is to be designed so that the sensors can operate for 6 continuous months without battery replacement. The following section will discuss the power consumption calculation to choose a battery with a suitable rating.
 
-First, the datasheets were referenced to obtain the maximum current consumption of each sensor, voltage, and sampling rate:
+It is set that the duty cycle (how often the sensor is active), be 10% for energy saving, which will result in 6 readings per minute for the 3 sensors. seconds)
 
-| **Sensor**                  | **Max Operating Current** | **Operating Voltage** | **Sampling Rate**                 |
-| --------------------------- | ------------------------- | --------------------- | --------------------------------- |
-| **DHT11**                   | Up to **2.5 mA**          | **3 to 5.5 V**        | **1 Hz (1 reading/second)**       |
-| **MQ-9**                    | Up to **150 mA**          | **5 V**               | **1 reading/hour (10s)**          |
-| **Accelerometer (ADXL345)** | Up to **23 µA**           | **2.5 to 5.25 V**     | **Continuous (1 reading/second)** |
+Now since we are using the ESP32 power pin, the operating voltage for each of the 3 sensors will be 3.3 V.
 
-Then, the active time was calculated as follows for each sensor over a day:
+ Given the DHT11 sensor consumes 2.5mA (0.0025A) during active transmission, its average power consumption will be the product of the operating voltage, current and the 10% duty cycle:
 
 $$
-  \text{Active Time} = \text{Number of Readings} \times \text{Duration per Reading}
+P_{\text{avg, DHT11}} = 3.3\,\text{V} \times 0.0025\,\text{A} \times 0.1 = 0.000825\,\text{W}
 $$
 
-For the DHT11 humidity sensor, it takes one reading per minute with each reading lasting 100 milliseconds, so the calculated active time was:
+Similarly for the accelerometer with 1.5mA (0.0015A) current consumption:
 
 $$
-  \text{Active Time} = 1440 \text{ minutes/day} \times 0.1 \text{ seconds} = 144 \text{ seconds/day}
+P_{\text{avg, accelerometer}} = 3.3\,\text{V} \times 0.0015\,\text{A} \times 0.1 = 0.000495\,\text{W}
 $$
 
-For the MQ-9 sensor, given it has a heating mode that repeats itself and lasts about 10 seconds each hour and consumes the most current in this phase, the active time was:
+And the MQ-9 sensor with 30mA (0.03A) current consumption:
 
 $$
-    \text{Active Time} = 24 \text{ readings} \times 10 \text{ seconds} = 240 \text{ seconds/day}
-$$
-   
-For the Accelerometer that takes a reading every second with 1 second per reading, the active time was:
-
-$$
-    \text{Active Time} = 86400 \text{ seconds/day}
+P_{\text{avg, MQ9}} = 3.3\,\text{V} \times 0.03\,\text{A} \times 0.1 = 0.0099\,\text{W}
 $$
 
-Then, we estimated the daily power consumption for each sensor using the formula:
+Now we will calculate the energy consumption per year by multiplying the average power by 8760 hours (hours in 1 year) for the resulting energy consumptions as follows:
 
 $$
-\text{Daily Power Consumption (mAh)} = \left(\frac{\text{Current (mA)} \times \text{Active Time (seconds)}}{3600}\right)
+E_{\text{DHT11}} = 0.000825\,\text{W} \times 8760\,\text{hours} = 7.22\,\text{Wh}
 $$
 
-- **DHT11**: 
-    
-    $$ \left(\frac{2.5\,\text{mA} \times 144\,\text{s}}{3600}\right) = 0.10\,\text{mAh} $$
-    
-- **MQ-9**:
-    
-    $$ \left(\frac{150\,\text{mA} \times 240\,\text{s}}{3600}\right) = 10\,\text{mAh} $$
-
-- **Accelerometer**:
-    
-    $$ \left(\frac{23\,\mu\text{A} \times 86400\,\text{s}}{3600}\right) = 0.55\,\text{mAh} $$
-
-So, the total daily consumption is the summation of these values:
 
 $$
-\text{Total Daily Consumption} = 0.10 + 10 + 0.55 = 10.65\,\text{mAh}
-$$
-
-Given two lithium ion batteries with the same voltage and different capacities of 9900 and 6800 mAh, connecting them in parallel will result in the summation of their capacities with a total capacity of:
-
-$$
-\text{Total Capacity} = \text{Capacity of Battery 1} + \text{Capacity of Battery 2} = 9900\,\text{mAh} + 6800\,\text{mAh} = 16700\,\text{mAh}
-$$
-
-To find out the battery lifetime in hours for which the system will operate continuously, we divide the total capacity over the average power consumption:
-
-$$
-\text{Battery Lifetime (hours)} = \frac{\text{Battery Capacity (mAh)}}{\text{Average Power Consumption (mA)}} = \frac{16700\,\text{mAh}}{10.65\,\text{mAh/day}} \times 24 = 37,644 \,\text{hours}
-$$
-
-We previously calculated that the total energy consumption for the system over 1 year is 98.31 Wh. Now, we need to calculate how long the battery will last based on this total energy consumption.
-
-Step 1: Convert the battery capacity to Wh
-
-Assuming the battery voltage is 3.3V (since the system operates at 3.3V), we can convert the 16700 mAh capacity into watt-hours (Wh):
-
-$$
-\text{Battery Capacity (Wh)} = \frac{\text{Battery Capacity (mAh)} \times \text{Voltage (V)}}{1000} = \frac{16700 \times 3.3}{1000} = 55.11 \text{ Wh}
-$$
-
-Step 2: Estimate battery lifetime
-
-Now, let's calculate the lifetime of the battery. The total energy consumption for the system is 38.88 Wh, and the battery has a total capacity of 55.11 Wh.
-
-$$
-\text{Battery Lifetime (hours)} = \frac{55.11 \text{ Wh}}{38.88 \text{ Wh per year}} \times 8760 \text{ hours} = \frac{55.11}{38.88} \times 8760 \approx 12409.86 \text{ hours}
+E_{\text{accelerometer}} = 0.000495\,\text{W} \times 8760\,\text{hours} = 4.33\,\text{Wh}
 $$
 
 $$
-\text{Battery Lifetime (days)} = \frac{12409.86}{24} \approx 517.08 \text{ days}
+E_{\text{MQ9}} = 0.0099\,\text{W} \times 8760\,\text{hours} = 86.76\,\text{Wh}
 $$
 
- 
- 
- 
+Then the total energy consumption for the 3 sensors in 1 year is:
+
+$$
+\text{Total Energy} = E_{\text{DHT11}} + E_{\text{accelerometer}} + E_{\text{MQ9}}
+$$
+
+$$
+\text{Total Energy} = 7.22\,\text{Wh} + 4.33\,\text{Wh} + 86.76\,\text{Wh} = 98.31\,\text{Wh}
+$$
+
+
+Given two lithium ion batteries are available with capacities 9900 mAh and 6800 mAh respectively, their parallel connection will result in an algebraic sum of their capacities of 16700 mAh. Now we need to convert this total capacity from mAh to Wh as follows:
+
+$$
+\text{Battery Capacity (Wh)} = \frac{\text{Battery Capacity (mAh)} \times \text{Voltage (V)}}{1000} = \frac{16700 \, \text{mAh} \times 3.3 \, \text{V}}{1000} = \frac{55110}{1000} = 55.11 \, \text{Wh} 
+$$
+
+Then to estimate the battery lifetime:
+
+$$
+\text{Battery Lifetime (hours)} = \frac{55.11 \text{ Wh}}{98.31 \text{ Wh per year}} \times 8760 \text{ hours} \approx 4880 \text{ hours} 
+$$
+
+To convert hours into days divide by 24: 
+
+$$
+\text{Battery Lifetime (days)} = \frac{4880}{24} \approx 203.33 \text{ days} 
+$$
+Then it can be deduced that the power supply will last approximately **203 days**, about 6.7 months, which proves the system achieved the requirement of being able to run at least **6 months**.
  
 
 
@@ -365,22 +308,132 @@ $$
 which is provided by the large storage capacity in the cloud-based Google sheet.
 
 ### Data storage mechanism
- The sensor data was sent from the ESP32 to an external google sheet that updates every 5 seconds, 
+ 
+ The following section explains how the data has been regularly logged from the ESP32 to a Google Spreadsheet using a Google Apps Script and HTTP POST requests
 
-#### **6. Testing and Results**
-- **System Performance:**
-  - Summary of tests conducted.
-  - Placeholder for specific test results related to load cell/temperature sensor.
 
-#### **7. Conclusion**
-- Summary of findings.
-- Implications and potential impact.
-- Suggestions for future improvements.
+First, a Google Spreadsheet is created and a new Google Apps Script was accessed from clicking Extensions > Apps Script. The script is then programmed to handle HTTP POST requests, parse the JSON payload, and append the data to rows in the spreadsheet regularly. The script was deployed as a web app, and URL was provided that the ESP32 later used to send the data.
+The code for the script is shown below:
 
-#### **8. References**
-- List of all references and resources used.
+```javascript
+function doPost(e) {
+  var ss = SpreadsheetApp.openByUrl('YOUR_SPREADSHEET_URL');
+  var sheet = ss.getSheetByName('Sheet1');
+  var data = JSON.parse(e.postData.contents);
+  sheet.appendRow([new Date(), data.CO, data.Vibration, data.Humidity, data.Roll, data.Pitch]);
+  return ContentService.createTextOutput('Data stored successfully');
+}
+```
 
-#### **9. Appendices**
-- Additional data, charts, or diagrams supporting the main text.
-- Data Sheets: Specific parts from sensor data sheets showing calibration.
 
+The ESP32 code included the WiFi.h, HTTPClient.h, ArduinoJson.h libraries to connect to the WiFi network and periodically send the data from sensors to the Google Script URL. This is done the server URL obtained from the deployment in the ESP32 code. 
+The following code is a selected part from the main program code explaining the data sending process:
+
+```cpp
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+const char* serverName = "YOUR_WEB_APP_URL"; // Google Apps Script URL
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+}
+
+void sendData(float co, float vibration, float humidity, float roll, float pitch) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(serverName);
+    http.addHeader("Content-Type", "application/json");
+    StaticJsonDocument<200> jsonDoc;
+    jsonDoc["CO"] = co;
+    jsonDoc["Vibration"] = vibration;
+    jsonDoc["Humidity"] = humidity;
+    jsonDoc["Roll"] = roll;
+    jsonDoc["Pitch"] = pitch;
+    String jsonString;
+    serializeJson(jsonDoc, jsonString);
+    int httpResponseCode = http.POST(jsonString);
+    if (httpResponseCode > 0) {
+      String response = http.getString();
+      Serial.println(response);
+    } else {
+      Serial.print("Error sending data: ");
+      Serial.println(httpResponseCode);
+    }
+    http.end();
+  } else {
+    Serial.println("WiFi not connected");
+  }
+}
+
+void loop() {
+  float co = 0.004135; // Example CO value
+  float vibration = 0.081657; // Example vibration value
+  float humidity = 48; // Example humidity value
+  float roll = 50.34708; // Example roll angle
+  float pitch = 11.94512; // Example pitch angle
+  sendData(co, vibration, humidity, roll, pitch);
+  delay(5000); // Send data every 5 seconds
+}
+```
+
+The `setup()` function initializes the WiFi connection, while the `sendData()` function constructs and sends the JSON payload to the Google Apps Script URL. 
+
+
+## 6. Data visualization 
+
+The sensor data was visualized using the Blynk platform. The Blynk library was installed in the Arduino IDE and the WiFi credentials were included. A new template was created in blynk and the template ID, device name, and authentication token were copied and defined in the program. The `loop()` function was used to send sensor data to Blynk using virtual pins.
+This codeblock is an example code demonstrating setting the virtual pins and connecting with Blynk:
+
+```cpp
+#define BLYNK_TEMPLATE_ID "YOUR_TEMPLATE_ID"
+#define BLYNK_DEVICE_NAME "YOUR_DEVICE_NAME"
+#define BLYNK_AUTH_TOKEN "YOUR_AUTH_TOKEN"
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "YOUR_SSID";
+char pass[] = "YOUR_PASSWORD";
+
+void setup() {
+  Serial.begin(115200);
+  Blynk.begin(auth, ssid, pass);
+}
+
+void loop() {
+  Blynk.run();
+  float co = 0.004135; // Example CO value
+  float vibration = 0.081657; // Example vibration value
+  float humidity = 48; // Example humidity value
+  float roll = 50.34708; // Example roll angle
+  float pitch = 11.94512; // Example pitch angle
+
+  Blynk.virtualWrite(V1, co);
+  Blynk.virtualWrite(V2, vibration);
+  Blynk.virtualWrite(V3, humidity);
+  Blynk.virtualWrite(V4, roll);
+  Blynk.virtualWrite(V5, pitch);
+
+  delay(5000); // Send data every 5 seconds
+}
+```
+
+In the Blynk website multiple widget charts and labels were added to display the sensor data. 
+The dashboard can be seen in the figure:
+
+![](https://i.imgur.com/XKSu2A9.png)
+
+Each chart was assigned a datastream from the virtual pin that is connected to each value of the sensor readings.
+This solution made the data be updated real-time visually for decision making.
