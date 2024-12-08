@@ -66,6 +66,10 @@ $$
 C = 10^{\left( \frac{\log\left( \frac{R_s}{R_0} \right) - \log(B)}{m} \right)}
 $$
 
+$$
+C = 10^{\left( \frac{\log\left( \frac{R_s}{R_0} \right) - 0.72}{-0.34} + 2.3 \right )}
+$$
+
 
 Where:
 - \( C \) represents the gas concentration.
