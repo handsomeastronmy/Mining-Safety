@@ -1,9 +1,225 @@
 
 ## 1. Introduction
 
+This project is concerned with mine condition modelling for ensuring safety and stability of mines. The following sections detail the process of developing this system, with the necessary code blocks explained and the power consumption calculations written in Latex for ease of readability.
+
 ## 2. Sensor integration
 The sensors connections were planned in the Cirkit Designer Software and can be seen in the following figure:
 **![](https://lh7-rt.googleusercontent.com/slidesz/AGV_vUfpIIhmLG60DCN_r03ort3DBUqlsi1_eMqJrW-7dWEWY1xa75wYNkm4i9utNh_CxpffEariiI11QVOV7fsfx2c2GiPXY2wcjF_oi_b1JPsGrKyqwjHZiDq-nO8ffOKdcDKABTC2N8qfCDD-LCQV4CE=s2048?key=XSWHYWdthl-CbACJd_wcfhjO)**
+
+The entire code for the system can be shown in:
+```c++
+#define BLYNK_TEMPLATE_ID "TMPL2eiVZOmcs"
+#define BLYNK_TEMPLATE_NAME "ESPData"
+#define BLYNK_AUTH_TOKEN "MupeH3xOrfox_UeyqfiBs9mFYLuHlMkC"
+
+#include <BlynkSimpleEsp32.h>
+#include <WiFi.h>
+#include <Wire.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <Adafruit_ADXL345_U.h>
+#include <math.h>
+#include <DHT.h>
+#include <DHT_U.h>
+
+// Red LED Pin
+#define RED_PIN 12
+
+// Blynk Virtual Pins
+#define CO V4
+#define X V1
+#define Y V2
+#define Z V3
+#define Vibration V0
+#define Humidity V6
+#define Tiltrollangle V7
+
+// MQ Sensor Configuration
+#define MQ_PIN 34
+#define RL_VALUE 5
+#define RO_CLEAN_AIR_FACTOR 9.83
+#define CALIBRATION_SAMPLE_TIMES 50
+#define CALIBRATION_SAMPLE_INTERVAL 500
+#define READ_SAMPLE_INTERVAL 50
+#define READ_SAMPLE_TIMES 5
+float Ro = 10; // Initial resistance in clean air
+float COCurve[3] = {2.3, 0.72, -0.34}; // Gas Curve for CO
+
+// ADXL345 Accelerometer Object
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
+float initialX = 0.0, initialY = 0.0, initialZ = 0.0;
+
+// WiFi Credentials
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "مباشر من روسيا";
+char pass[] = "12312335";
+
+// Google Sheets Script Web App URL
+const char* serverName = "https://script.google.com/macros/s/AKfycbxQk6eSnsTtMaqnAH6qPdIR_RvmXM1aUqoxLsdW7h6LN62MFMIkM_Q8Y4trZ-idLMjaug/exec"; // Replace with your Apps Script Web App URL
+
+DHT dht1(4, DHT11);
+
+// Thresholds
+const float VIBRATION_THRESHOLD = 6; // m/sec'2
+const float CO_THRESHOLD = 25.0; // ppm (estimated value for CO)
+const float Humidity_THRESHOLD = 84;
+const float Roll_THRESHOLD = 23;
+
+void setup() {
+  // Initialize Serial Monitor
+  Serial.begin(115200);
+  delay(100);
+
+  Blynk.begin(auth, ssid, pass);
+
+  if (!accel.begin()) {
+    Serial.println("Failed to find ADXL345 chip");
+    while (1); // Stop if accelerometer is not found
+  }
+  accel.setRange(ADXL345_RANGE_2_G); // Set accelerometer range to ±16g
+
+  // Capture initial (baseline) accelerometer values
+  sensors_event_t event;
+  accel.getEvent(&event);
+  initialX = event.acceleration.x;
+  initialY = event.acceleration.y;
+  initialZ = event.acceleration.z;
+  Serial.println("Initial accelerometer readings captured");
+
+  pinMode(RED_PIN, OUTPUT);
+
+  // Initialize MQ Sensor
+  Serial.println("Calibrating MQ sensor...");
+  Ro = MQCalibration(MQ_PIN);
+  if (Ro <= 0) {
+    Ro = 10; // Fallback value
+    Serial.println("Calibration failed. Using default Ro value.");
+  }
+  Serial.print("MQ Sensor Calibrated. Ro = ");
+  Serial.println(Ro);
+}
+
+void loop() {
+  if (WiFi.status() == WL_CONNECTED) {
+    float rs_ro_ratio = MQRead(MQ_PIN) / Ro;
+    float coValue = MQGetGasPercentage(rs_ro_ratio, COCurve);
+    if (coValue < 0) coValue = 0; // Fallback value
+
+    float humidity = dht1.readHumidity();
+    sensors_event_t event;
+    accel.getEvent(&event);
+
+    // Adjusted accelerometer values
+    float adjustedX = event.acceleration.x - initialX;
+    float adjustedY = event.acceleration.y - initialY;
+    float adjustedZ = event.acceleration.z - initialZ;
+
+    // Calculate vibration intensity (RMS)
+    float vibrationIntensity = sqrt((adjustedX * adjustedX + adjustedY * adjustedY + adjustedZ * adjustedZ) / 3);
+
+    // Calculate tilt angles
+    float roll = atan2(event.acceleration.y, event.acceleration.z) * 180.0 / PI;
+    // Write to Blynk
+    Blynk.virtualWrite(CO, coValue);
+    Blynk.virtualWrite(Vibration, vibrationIntensity);
+    Blynk.virtualWrite(Humidity, humidity);
+    Blynk.virtualWrite(Tiltrollangle, roll);
+    Blynk.virtualWrite(Tiltpitchangle, pitch);
+
+    // LED Alert
+    if (vibrationIntensity > VIBRATION_THRESHOLD) digitalWrite(RED_PIN, HIGH);
+    else digitalWrite(RED_PIN, LOW);
+
+    // Check thresholds and print alert messages
+    if (coValue > CO_THRESHOLD) {
+      Serial.println("Alert: CO levels are above the threshold!");
+    }
+
+    if (vibrationIntensity > VIBRATION_THRESHOLD) {
+      Serial.println("Alert: Vibration levels are above the threshold!");
+    }
+
+    if (humidity > Humidity_THRESHOLD) {
+      Serial.println("Alert: Humidity levels are above the threshold!");
+    }
+
+    if (roll > Roll_THRESHOLD) {
+      Serial.println("Alert: Roll angle is above the threshold!");
+    }
+
+    // Send Data to Google Sheets
+    sendDataToGoogleSheets(coValue, vibrationIntensity, humidity, roll, pitch);
+  } else {
+    Serial.println("WiFi not connected.");
+  }
+
+  delay(1000); // Delay to prevent rapid loop execution
+}
+
+// Function to send data to Google Sheets
+void sendDataToGoogleSheets(float coValue, float vibrationIntensity, float humidity, float roll, float pitch) {
+  HTTPClient http;
+  http.begin(serverName);
+
+  // Prepare JSON payload
+  StaticJsonDocument<200> jsonDoc;
+  jsonDoc["co"] = coValue;
+  jsonDoc["vibration Intensity"] = vibrationIntensity;
+  jsonDoc["Humidity"] = humidity;
+  jsonDoc["Roll"] = roll;
+  Serial.print(humidity);
+  Serial.print(roll);
+  Serial.print(coValue);
+  Serial.print(vibrationIntensity);
+
+  String jsonString;
+  serializeJson(jsonDoc, jsonString);
+
+  // Send HTTP POST request
+  http.addHeader("Content-Type", "application/json");
+  int httpResponseCode = http.POST(jsonString);
+
+  if (httpResponseCode > 0) {
+    Serial.println("Google Sheets Response: " + http.getString());
+  } else {
+    Serial.print("Error sending data: ");
+    Serial.println(httpResponseCode);
+  }
+
+  http.end();
+}
+
+// MQ Sensor Functions
+float MQResistanceCalculation(int raw_adc) {
+  if (raw_adc == 0) return -1; // Error-indicating value
+  return ((float)RL_VALUE * (1023 - raw_adc) / raw_adc);
+}
+
+float MQCalibration(int mq_pin) {
+  float val = 0;
+  for (int i = 0; i < CALIBRATION_SAMPLE_TIMES; i++) {
+    float resistance = MQResistanceCalculation(analogRead(mq_pin));
+    if (resistance > 0) val += resistance;
+    delay(CALIBRATION_SAMPLE_INTERVAL);
+  }
+  return val / CALIBRATION_SAMPLE_TIMES / RO_CLEAN_AIR_FACTOR;
+}
+
+float MQRead(int mq_pin) {
+  float rs = 0;
+  for (int i = 0; i < READ_SAMPLE_TIMES; i++) {
+    rs += MQResistanceCalculation(analogRead(mq_pin));
+    delay(READ_SAMPLE_INTERVAL);
+  }
+  return rs / READ_SAMPLE_TIMES;
+}
+
+float MQGetGasPercentage(float rs_ro_ratio, float *pcurve) {
+  return pow(10, ((log(rs_ro_ratio) - pcurve[1]) / pcurve[2]) + pcurve[0]);
+}
+
+```
 
 ## 3. Signal interpretation techniques:
 The following section will detail the methodology of converting raw sensor data to readings accurately expressing the environmental conditions sent.
@@ -66,9 +282,11 @@ $$
 C = 10^{\left( \frac{\log\left( \frac{R_s}{R_0} \right) - \log(B)}{m} \right)}
 $$
 
+
 $$
 C = 10^{\left( \frac{\log\left( \frac{R_s}{R_0} \right) - 0.72}{-0.34} + 2.3 \right )}
 $$
+
 
 
 Where:
@@ -121,18 +339,33 @@ The vibration intensity was calculated by obtaining the root mean square of the 
    float vibrationIntensity = sqrt((adjustedX * adjustedX + adjustedY * adjustedY + adjustedZ * adjustedZ - 1) / 3);
    ```
 
+The roll angle is the angle of rotation about the reference axis, which is considered an important parameter contributing to slope stability in mines. The following code snippet shows how it has been computed using the inverse tangent trigonometric function:
 
+```cpp
+// Capture initial (baseline) accelerometer values
+sensors_event_t event;
+accel.getEvent(&event);
+initialX = event.acceleration.x;
+initialY = event.acceleration.y;
+initialZ = event.acceleration.z;
+Serial.println("Initial accelerometer readings captured");
 
-   ```cpp
-   float roll = atan2(event.acceleration.y, event.acceleration.z) * 180.0 / PI;
-   float pitch = atan2(-event.acceleration.x, sqrt(event.acceleration.y * event.acceleration.y + event.acceleration.z * event.acceleration.z)) * 180.0 / PI;
-   ```
+// In the loop function
+sensors_event_t event;
+accel.getEvent(&event);
 
-     - **Roll**: Uses the Y and Z axes to determine the tilt angle around the X-axis.
-     - **Pitch**: Uses the X axis and the magnitude of Y and Z axes to determine the tilt angle around the Y-axis.
-   - **Mathematical Explanation**:
-     - `atan2(y, z)` calculates the angle between the projection of the vector on the Y-Z plane and the Z axis, providing the roll angle.
-     - `atan2(-x, sqrt(y^2 + z^2))` calculates the angle between the projection on the X axis and the vector's magnitude in the Y-Z plane, giving the pitch angle.
+// Adjusted accelerometer values
+float adjustedX = event.acceleration.x - initialX;
+float adjustedY = event.acceleration.y - initialY;
+float adjustedZ = event.acceleration.z - initialZ;
+
+// Calculate tilt angles
+float roll = atan2(event.acceleration.y, event.acceleration.z) * 180.0 / PI;
+
+// Write to Blynk
+Blynk.virtualWrite(Tiltrollangle, roll);
+
+```
 
 
 ## 4. Power Efficiency
@@ -239,20 +472,9 @@ which is provided by the large storage capacity in the cloud-based Google sheet.
 
 
 First, a Google Spreadsheet is created and a new Google Apps Script was accessed from clicking Extensions > Apps Script. The script is then programmed to handle HTTP POST requests, parse the JSON payload, and append the data to rows in the spreadsheet regularly. The script was deployed as a web app, and URL was provided that the ESP32 later used to send the data.
-The code for the script is shown below:
+The code for the script is shown below can be accessed in its respective file in the repository.
 
-```javascript
-function doPost(e) {
-  var ss = SpreadsheetApp.openByUrl('YOUR_SPREADSHEET_URL');
-  var sheet = ss.getSheetByName('Sheet1');
-  var data = JSON.parse(e.postData.contents);
-  sheet.appendRow([new Date(), data.CO, data.Vibration, data.Humidity, data.Roll, data.Pitch]);
-  return ContentService.createTextOutput('Data stored successfully');
-}
-```
-
-
-The ESP32 code included the WiFi.h, HTTPClient.h, ArduinoJson.h libraries to connect to the WiFi network and periodically send the data from sensors to the Google Script URL. This is done the server URL obtained from the deployment in the ESP32 code. 
+The ESP32 code included the WiFi.h, HTTPClient.h, ArduinoJson.h libraries to connect to the WiFi network and periodically send the data from sensors to the Google Script URL. This is done with the server URL obtained from the deployment in the ESP32 code. 
 The following code is a selected part from the main program code explaining the data sending process:
 
 ```cpp
@@ -260,56 +482,52 @@ The following code is a selected part from the main program code explaining the 
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-const char* ssid = "YOUR_SSID";
-const char* password = "YOUR_PASSWORD";
-const char* serverName = "YOUR_WEB_APP_URL"; // Google Apps Script URL
+// Google Sheets Script Web App URL
+const char* serverName = "https://script.google.com/macros/s/AKfycbxQk6eSnsTtMaqnAH6qPdIR_RvmXM1aUqoxLsdW7h6LN62MFMIkM_Q8Y4trZ-idLMjaug/exec"; // Replace with your Apps Script Web App URL
 
-void setup() {
-  Serial.begin(115200);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
-  Serial.println("Connected to WiFi");
-}
+void sendDataToGoogleSheets(float coValue, float vibrationIntensity, float humidity, float roll, float pitch) {
+  HTTPClient http;
+  http.begin(serverName);
 
-void sendData(float co, float vibration, float humidity, float roll, float pitch) {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.begin(serverName);
-    http.addHeader("Content-Type", "application/json");
-    StaticJsonDocument<200> jsonDoc;
-    jsonDoc["CO"] = co;
-    jsonDoc["Vibration"] = vibration;
-    jsonDoc["Humidity"] = humidity;
-    jsonDoc["Roll"] = roll;
-    jsonDoc["Pitch"] = pitch;
-    String jsonString;
-    serializeJson(jsonDoc, jsonString);
-    int httpResponseCode = http.POST(jsonString);
-    if (httpResponseCode > 0) {
-      String response = http.getString();
-      Serial.println(response);
-    } else {
-      Serial.print("Error sending data: ");
-      Serial.println(httpResponseCode);
-    }
-    http.end();
+  // Prepare JSON payload
+  StaticJsonDocument<200> jsonDoc;
+  jsonDoc["co"] = coValue;
+  jsonDoc["vibration Intensity"] = vibrationIntensity;
+  jsonDoc["Humidity"] = humidity;
+  jsonDoc["Roll"] = roll;
+
+  String jsonString;
+  serializeJson(jsonDoc, jsonString);
+
+  // Send HTTP POST request
+  http.addHeader("Content-Type", "application/json");
+  int httpResponseCode = http.POST(jsonString);
+
+  if (httpResponseCode > 0) {
+    Serial.println("Google Sheets Response: " + http.getString());
   } else {
-    Serial.println("WiFi not connected");
+    Serial.print("Error sending data: ");
+    Serial.println(httpResponseCode);
   }
+
+  http.end();
 }
 
 void loop() {
-  float co = 0.004135; // Example CO value
-  float vibration = 0.081657; // Example vibration value
-  float humidity = 48; // Example humidity value
-  float roll = 50.34708; // Example roll angle
-  float pitch = 11.94512; // Example pitch angle
-  sendData(co, vibration, humidity, roll, pitch);
-  delay(5000); // Send data every 5 seconds
+  if (WiFi.status() == WL_CONNECTED) {
+    float coValue = 0.004135; // Example CO value
+    float vibrationIntensity = 0.081657; // Example vibration value
+    float humidity = 48; // Example humidity value
+    float roll = 50.34708; // Example roll angle
+    float pitch = 11.94512; // Example pitch angle
+
+    sendDataToGoogleSheets(coValue, vibrationIntensity, humidity, roll, pitch);
+    delay(5000); // Send data every 5 seconds
+  } else {
+    Serial.println("WiFi not connected.");
+  }
 }
+
 ```
 
 The `setup()` function initializes the WiFi connection, while the `sendData()` function constructs and sends the JSON payload to the Google Apps Script URL. 
@@ -321,17 +539,17 @@ The sensor data was visualized using the Blynk platform. The Blynk library was i
 This codeblock is an example code demonstrating setting the virtual pins and connecting with Blynk:
 
 ```cpp
-#define BLYNK_TEMPLATE_ID "YOUR_TEMPLATE_ID"
-#define BLYNK_DEVICE_NAME "YOUR_DEVICE_NAME"
-#define BLYNK_AUTH_TOKEN "YOUR_AUTH_TOKEN"
+#define BLYNK_TEMPLATE_ID "TMPL2eiVZOmcs"
+#define BLYNK_TEMPLATE_NAME "ESPData"
+#define BLYNK_AUTH_TOKEN "MupeH3xOrfox_UeyqfiBs9mFYLuHlMkC"
 
+#include <BlynkSimpleEsp32.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <BlynkSimpleEsp32.h>
 
 char auth[] = BLYNK_AUTH_TOKEN;
-char ssid[] = "YOUR_SSID";
-char pass[] = "YOUR_PASSWORD";
+char ssid[] = "11310";
+char pass[] = "12312335";
 
 void setup() {
   Serial.begin(115200);
@@ -340,19 +558,21 @@ void setup() {
 
 void loop() {
   Blynk.run();
-  float co = 0.004135; // Example CO value
-  float vibration = 0.081657; // Example vibration value
+  
+  float coValue = 0.004135; // Example CO value
+  float vibrationIntensity = 0.081657; // Example vibration value
   float humidity = 48; // Example humidity value
   float roll = 50.34708; // Example roll angle
   float pitch = 11.94512; // Example pitch angle
 
-  Blynk.virtualWrite(V1, co);
-  Blynk.virtualWrite(V2, vibration);
-  Blynk.virtualWrite(V3, humidity);
-  Blynk.virtualWrite(V4, roll);
-  Blynk.virtualWrite(V5, pitch);
+  Blynk.virtualWrite(CO, coValue);
+  Blynk.virtualWrite(Vibration, vibrationIntensity);
+  Blynk.virtualWrite(Humidity, humidity);
+  Blynk.virtualWrite(Tiltrollangle, roll);
+  Blynk.virtualWrite(Tiltpitchangle, pitch);
 
   delay(5000); // Send data every 5 seconds
+}
 }
 ```
 
@@ -366,79 +586,3 @@ This solution made the data be updated real-time visually for decision making.
 
 ## 7. System performance in the test environment 
 
-
-| **Timestamp**      | **Reading Time** | **Humidity** |
-| ------------------ | ---------------- | ------------ |
-| 12/2/2024 16:23:55 | 23:55            | 57           |
-| 12/2/2024 16:23:56 | 23:55            | 57           |
-| 12/2/2024 16:24:52 | 24:51:00         | 57           |
-| 12/2/2024 16:25:02 | 25:1             | 58           |
-| 12/2/2024 16:51:44 | 51:43:00         | 52           |
-| 12/2/2024 16:51:49 | 51:49:00         | 61           |
-| 12/2/2024 16:51:55 | 51:54:00         | 63           |
-| 12/2/2024 16:52:00 | 51:59:00         | 64           |
-| 12/2/2024 16:52:05 | 52:5             | 65           |
-| 12/2/2024 16:52:11 | 52:11:00         | 66           |
-| 12/2/2024 16:52:17 | 52:16:00         | 66           |
-| 12/2/2024 16:52:22 | 52:21:00         | 67           |
-| 12/2/2024 16:52:29 | 52:29:00         | 68           |
-| 12/2/2024 16:52:34 | 52:34:00         | 69           |
-| 12/2/2024 16:52:40 | 52:39:00         | 71           |
-| 12/2/2024 16:52:45 | 52:45:00         | 72           |
-| 12/2/2024 16:52:51 | 52:50:00         | 73           |
-| 12/2/2024 16:52:57 | 52:56:00         | 74           |
-| 12/2/2024 16:53:14 | 53:14:00         | 77           |
-| 12/2/2024 16:53:23 | 53:23:00         | 77           |
-| 12/2/2024 16:53:28 | 53:28:00         | 77           |
-| 12/2/2024 16:53:33 | 53:33:00         | 77           |
-| 12/2/2024 16:53:40 | 53:39:00         | 78           |
-| 12/2/2024 16:53:45 | 53:45:00         | 79           |
-| 12/2/2024 16:53:50 | 53:50:00         | 79           |
-| 12/2/2024 16:53:56 | 53:56:00         | 80           |
-| 12/2/2024 16:54:02 | 54:1             | 80           |
-| 12/2/2024 16:54:07 | 54:6             | 80           |
-| 12/2/2024 16:54:14 | 54:13:00         | 80           |
-| 12/2/2024 16:54:19 | 54:19:00         | 80           |
-| 12/2/2024 16:54:26 | 54:26:00         | 80           |
-| 12/2/2024 16:54:33 | 54:32:00         | 80           |
-| 12/2/2024 16:54:38 | 54:38:00         | 80           |
-| 12/2/2024 16:54:44 | 54:43:00         | 81           |
-| 12/2/2024 16:54:49 | 54:48:00         | 81           |
-| 12/2/2024 16:54:54 | 54:53:00         | 81           |
-| 12/2/2024 16:54:59 | 54:58:00         | 81           |
-| 12/2/2024 16:55:04 | 55:4             | 81           |
-| 12/2/2024 16:55:10 | 55:9             | 81           |
-| 12/2/2024 16:55:17 | 55:16:00         | 81           |
-| 12/2/2024 16:55:22 | 55:21:00         | 80           |
-| 12/2/2024 16:55:29 | 55:28:00         | 80           |
-| 12/2/2024 16:55:34 | 55:34:00         | 80           |
-| 12/2/2024 16:55:43 | 55:42:00         | 80           |
-| 12/2/2024 16:55:49 | 55:48:00         | 81           |
-| 12/2/2024 16:55:54 | 55:54:00         | 81           |
-| 12/2/2024 16:56:00 | 56:0             | 81           |
-| 12/2/2024 16:56:06 | 56:6             | 80           |
-| 12/2/2024 16:56:12 | 56:12:00         | 80           |
-| 12/2/2024 16:56:22 | 56:21:00         | 80           |
-| 12/2/2024 16:56:29 | 56:29:00         | 81           |
-| 12/2/2024 16:56:36 | 56:35:00         | 82           |
-| 12/2/2024 16:56:42 | 56:42:00         | 84           |
-| 12/2/2024 16:56:48 | 56:48:00         | 86           |
-| 12/2/2024 16:57:04 | 57:4             | 88           |
-| 12/2/2024 16:57:06 | 57:5             | 89           |
-| 12/2/2024 16:57:18 | 57:17:00         | 90           |
-| 12/2/2024 16:57:24 | 57:23:00         | 91           |
-| 12/2/2024 16:57:30 | 57:29:00         | 93           |
-| 12/2/2024 16:57:35 | 57:34:00         | 94           |
-| 12/2/2024 16:57:40 | 57:39:00         | 94           |
-| 12/2/2024 16:57:45 | 57:45:00         | 94           |
-| 12/2/2024 16:57:51 | 57:50:00         | 94           |
-| 12/2/2024 16:57:56 | 57:56:00         | 94           |
-| 12/2/2024 16:58:05 | 58:4             | 95           |
-| 12/2/2024 16:58:10 | 58:9             | 95           |
-| 12/2/2024 16:58:15 | 58:15:00         | 96           |
-| 12/2/2024 16:58:21 | 58:20:00         | 96           |
-| 12/2/2024 16:58:32 | 58:32:00         | 96           |
-| 12/2/2024 16:58:45 | 58:44:00         | 97           |
-| 12/2/2024 16:58:51 | 58:50:00         | 97           |
-| 12/2/2024 16:59:00 | 59:0             | 97           |
-|                    |                  |              |
