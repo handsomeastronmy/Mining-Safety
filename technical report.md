@@ -576,13 +576,5 @@ void loop() {
 }
 ```
 
-In the Blynk website multiple widget charts and labels were added to display the sensor data. 
-The dashboard can be seen in the figure:
-
-![](https://i.imgur.com/XKSu2A9.png)
-
 Each chart was assigned a datastream from the virtual pin that is connected to each value of the sensor readings.
 This solution made the data be updated real-time visually for decision making.
-
-## 7. System performance in the test environment 
-
