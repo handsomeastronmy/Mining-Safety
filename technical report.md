@@ -52,7 +52,7 @@ float initialX = 0.0, initialY = 0.0, initialZ = 0.0;
 
 // WiFi Credentials
 char auth[] = BLYNK_AUTH_TOKEN;
-char ssid[] = "مباشر من روسيا";
+char ssid[] = "11310";
 char pass[] = "12312335";
 
 // Google Sheets Script Web App URL
