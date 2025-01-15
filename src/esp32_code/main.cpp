@@ -51,7 +51,7 @@ DHT dht1(4, DHT11);
 
 // Thresholds
 const float VIBRATION_THRESHOLD = 6; // m/sec'2
-const float CO_THRESHOLD = 25.0; // ppm (estimated value for CO)
+const float CO_THRESHOLD = 1; // ppm (estimated value for CO)
 const float Humidity_THRESHOLD = 84;
 const float Roll_THRESHOLD = 23;
 
@@ -64,9 +64,9 @@ void setup() {
 
   if (!accel.begin()) {
     Serial.println("Failed to find ADXL345 chip");
-    while (1); // Stop if accelerometer is not found
+    while (1); 
   }
-  accel.setRange(ADXL345_RANGE_2_G); // Set accelerometer range to ±16g
+  accel.setRange(ADXL345_RANGE_2_G);
 
   // Capture initial (baseline) accelerometer values
   sensors_event_t event;
