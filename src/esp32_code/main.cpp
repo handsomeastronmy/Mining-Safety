@@ -23,7 +23,6 @@
 #define Vibration V0
 #define Humidity V6
 #define Tiltrollangle V7
-#define Tiltpitchangle V8
 
 // MQ Sensor Configuration
 #define MQ_PIN 34
@@ -42,11 +41,11 @@ float initialX = 0.0, initialY = 0.0, initialZ = 0.0;
 
 // WiFi Credentials
 char auth[] = BLYNK_AUTH_TOKEN;
-char ssid[] = "مباشر من روسيا";
+char ssid[] = "11310";
 char pass[] = "12312335";
 
 // Google Sheets Script Web App URL
-const char* serverName = "https://script.google.com/macros/s/AKfycbyC-zPugUDDZ6IXr4ksjSmPfnG0W5TQwRgA96j1wkbcNqALbI9nod79PoRlQpK_6-1hGA/exec"; // Replace with your Apps Script Web App URL
+const char* serverName = "https://script.google.com/macros/s/AKfycbxQk6eSnsTtMaqnAH6qPdIR_RvmXM1aUqoxLsdW7h6LN62MFMIkM_Q8Y4trZ-idLMjaug/exec"; // Replace with your Apps Script Web App URL
 
 DHT dht1(4, DHT11);
 
@@ -54,8 +53,7 @@ DHT dht1(4, DHT11);
 const float VIBRATION_THRESHOLD = 6; // m/sec'2
 const float CO_THRESHOLD = 25.0; // ppm (estimated value for CO)
 const float Humidity_THRESHOLD = 84;
-const float Roll_THRESHOLD = 35;
-const float Pitch_THRESHOLD = 35;
+const float Roll_THRESHOLD = 23;
 
 void setup() {
   // Initialize Serial Monitor
@@ -107,12 +105,10 @@ void loop() {
     float adjustedZ = event.acceleration.z - initialZ;
 
     // Calculate vibration intensity (RMS)
-    float vibrationIntensity = sqrt((adjustedX * adjustedX + adjustedY * adjustedY + adjustedZ * adjustedZ-1) / 3);
+    float vibrationIntensity = sqrt((adjustedX * adjustedX + adjustedY * adjustedY + adjustedZ * adjustedZ) / 3);
 
     // Calculate tilt angles
     float roll = atan2(event.acceleration.y, event.acceleration.z) * 180.0 / PI;
-    float pitch = atan2(-event.acceleration.x, sqrt(event.acceleration.y * event.acceleration.y + event.acceleration.z * event.acceleration.z)) * 180.0 / PI;
-
     // Write to Blynk
     Blynk.virtualWrite(CO, coValue);
     Blynk.virtualWrite(Vibration, vibrationIntensity);
@@ -123,6 +119,23 @@ void loop() {
     // LED Alert
     if (vibrationIntensity > VIBRATION_THRESHOLD) digitalWrite(RED_PIN, HIGH);
     else digitalWrite(RED_PIN, LOW);
+
+    // Check thresholds and print alert messages
+    if (coValue > CO_THRESHOLD) {
+      Serial.println("Alert: CO levels are above the threshold!");
+    }
+
+    if (vibrationIntensity > VIBRATION_THRESHOLD) {
+      Serial.println("Alert: Vibration levels are above the threshold!");
+    }
+
+    if (humidity > Humidity_THRESHOLD) {
+      Serial.println("Alert: Humidity levels are above the threshold!");
+    }
+
+    if (roll > Roll_THRESHOLD) {
+      Serial.println("Alert: Roll angle is above the threshold!");
+    }
 
     // Send Data to Google Sheets
     sendDataToGoogleSheets(coValue, vibrationIntensity, humidity, roll, pitch);
@@ -144,9 +157,7 @@ void sendDataToGoogleSheets(float coValue, float vibrationIntensity, float humid
   jsonDoc["vibration Intensity"] = vibrationIntensity;
   jsonDoc["Humidity"] = humidity;
   jsonDoc["Roll"] = roll;
-  jsonDoc["Pitch"] = pitch;
   Serial.print(humidity);
-  Serial.print(pitch);
   Serial.print(roll);
   Serial.print(coValue);
   Serial.print(vibrationIntensity);
