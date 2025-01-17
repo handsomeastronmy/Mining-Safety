@@ -125,7 +125,6 @@ void loop() {
     Blynk.virtualWrite(Vibration, vibrationIntensity);
     Blynk.virtualWrite(Humidity, humidity);
     Blynk.virtualWrite(Tiltrollangle, roll);
-    Blynk.virtualWrite(Tiltpitchangle, pitch);
 
     // LED Alert
     if (vibrationIntensity > VIBRATION_THRESHOLD) digitalWrite(RED_PIN, HIGH);
@@ -149,7 +148,7 @@ void loop() {
     }
 
     // Send Data to Google Sheets
-    sendDataToGoogleSheets(coValue, vibrationIntensity, humidity, roll, pitch);
+    sendDataToGoogleSheets(coValue, vibrationIntensity, humidity, roll);
   } else {
     Serial.println("WiFi not connected.");
   }
@@ -158,7 +157,7 @@ void loop() {
 }
 
 // Function to send data to Google Sheets
-void sendDataToGoogleSheets(float coValue, float vibrationIntensity, float humidity, float roll, float pitch) {
+void sendDataToGoogleSheets(float coValue, float vibrationIntensity, float humidity, float roll) {
   HTTPClient http;
   http.begin(serverName);
 
@@ -519,7 +518,6 @@ void loop() {
     float vibrationIntensity = 0.081657; // Example vibration value
     float humidity = 48; // Example humidity value
     float roll = 50.34708; // Example roll angle
-    float pitch = 11.94512; // Example pitch angle
 
     sendDataToGoogleSheets(coValue, vibrationIntensity, humidity, roll, pitch);
     delay(5000); // Send data every 5 seconds
@@ -563,13 +561,11 @@ void loop() {
   float vibrationIntensity = 0.081657; // Example vibration value
   float humidity = 48; // Example humidity value
   float roll = 50.34708; // Example roll angle
-  float pitch = 11.94512; // Example pitch angle
 
   Blynk.virtualWrite(CO, coValue);
   Blynk.virtualWrite(Vibration, vibrationIntensity);
   Blynk.virtualWrite(Humidity, humidity);
   Blynk.virtualWrite(Tiltrollangle, roll);
-  Blynk.virtualWrite(Tiltpitchangle, pitch);
 
   delay(5000); // Send data every 5 seconds
 }
