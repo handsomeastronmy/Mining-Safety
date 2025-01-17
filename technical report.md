@@ -116,7 +116,7 @@ void loop() {
     float adjustedZ = event.acceleration.z - initialZ;
 
     // Calculate vibration intensity (RMS)
-    float vibrationIntensity = sqrt((adjustedX * adjustedX + adjustedY * adjustedY + adjustedZ * adjustedZ) / 3);
+    float vibrationIntensity = sqrt((adjustedX * adjustedX + adjustedY * adjustedY + adjustedZ * adjustedZ - 1) / 3);
 
     // Calculate tilt angles
     float roll = atan2(event.acceleration.y, event.acceleration.z) * 180.0 / PI;
